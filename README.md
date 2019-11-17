@@ -1,6 +1,6 @@
 # rmqdump
 
-Simple cli tool for dumping messages from RabbitMQ to stdout. or publishing from stdin to RabbitMQ.
+Simple CLI tool for dumping messages from RabbitMQ to stdout. or publishing from stdin to RabbitMQ.
 
 **This is an alpha software**
 
@@ -9,7 +9,7 @@ Simple cli tool for dumping messages from RabbitMQ to stdout. or publishing from
 go install github.com/demetrio108/rmqdump
 ```
 
-## Usage exmaples
+## Usage examples
 
 Dump all messages from exchange:
 ```
