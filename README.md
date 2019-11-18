@@ -6,6 +6,7 @@ Simple CLI tool for dumping messages from RabbitMQ to stdout. or publishing from
 
 ## Installing (assuming go environment is set)
 ```
+go get github.com/demetrio108/rmqdump
 go install github.com/demetrio108/rmqdump
 ```
 
