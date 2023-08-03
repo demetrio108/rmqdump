@@ -4,10 +4,11 @@ Simple CLI tool for dumping messages from RabbitMQ to stdout. or publishing from
 
 **This is an alpha software**
 
-## Installing (assuming go environment is set)
+## Build using docker
 ```
-go get github.com/demetrio108/rmqdump
-go install github.com/demetrio108/rmqdump
+make        # binary
+make rpm    # rpm package
+make deb    # deb package
 ```
 
 ## Usage examples
