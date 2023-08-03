@@ -2,6 +2,8 @@ package main
 
 import (
 	"bufio"
+	"encoding/base64"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -12,11 +14,17 @@ import (
 	"github.com/streadway/amqp"
 )
 
+type BinaryMessage struct {
+	CType   string `json:"ctype"`
+	B64Body string `json:"b64body"`
+}
+
 var (
 	publisherModeFlag = flag.Bool("p", false, "publisher mode, read from stdin and publish to rabbitmq")
 	queueFlag         = flag.String("q", "", "queue to attach to")
 	exchangeFlag      = flag.String("x", "", "exchange to bind to")
 	routingKeyFlag    = flag.String("k", "#", "routing key")
+	binaryFlag        = flag.Bool("b", false, "assume binary messages, output/input format is {\"ctype\": \"x\", \"b64body\": \"base64 body\"}")
 
 	Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "Usage: %s <options> <amq-uri>\n", os.Args[0])
@@ -87,16 +95,46 @@ func main() {
 		if *exchangeFlag == "" {
 			log.Fatal("Exchange flag have to be specified when running in publisher mode")
 		}
+
+		buf := make([]byte, 512*1024)
 		scanner := bufio.NewScanner(os.Stdin)
+		scanner.Buffer(buf, 512*1024)
+
 		for scanner.Scan() {
 			if scanner.Text() == "" {
 				continue
 			}
+
+			var ctype string
+			var body []byte
+
+			if *binaryFlag {
+				var msg BinaryMessage
+
+				err := json.Unmarshal(scanner.Bytes(), &msg)
+				if err != nil {
+					log.Printf("Failed to unmarshal JSON: %s\n, %s", err, scanner.Bytes())
+					continue
+				}
+
+				body_dec, err := base64.StdEncoding.DecodeString(msg.B64Body)
+				if err != nil {
+					log.Printf("Failed to decode message: %s\n, %s", err, msg.B64Body)
+					continue
+				}
+
+				ctype = msg.CType
+				body = []byte(body_dec)
+			} else {
+				ctype = "application/json"
+				body = scanner.Bytes()
+			}
+
 			msg := amqp.Publishing{
 				DeliveryMode: amqp.Persistent,
 				Timestamp:    time.Now(),
-				ContentType:  "application/json",
-				Body:         scanner.Bytes(),
+				ContentType:  ctype,
+				Body:         body,
 			}
 
 			// This is not a mandatory delivery, so it will be dropped if there are no
@@ -142,7 +180,12 @@ func main() {
 		failOnError(err, "Failed to register a consumer")
 
 		for d := range msgs {
-			fmt.Printf("%s\n", d.Body)
+			if *binaryFlag {
+				b64body := base64.StdEncoding.EncodeToString(d.Body)
+				fmt.Printf("{\"ctype\": \"%s\", \"b64body\": \"%s\"}\n", d.ContentType, b64body)
+			} else {
+				fmt.Printf("%s\n", d.Body)
+			}
 		}
 	}
 }
